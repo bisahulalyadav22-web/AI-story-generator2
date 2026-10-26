@@ -1,0 +1,90 @@
+# AI-story-generator2
+document.getElementById('generateBtn').addEventListener('click', generateStory);
+document.getElementById('copyBtn').addEventListener('click', copyStory);
+
+async function generateStory() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const prompt = document.getElementById('storyPrompt').value.trim();
+    const genre = document.getElementById('storyGenre').value;
+    const length = document.getElementById('storyLength').value;
+    const systemInstruction = document.getElementById('systemInstruction').value.trim();
+
+    const outputArea = document.getElementById('storyOutput');
+    const loader = document.getElementById('loader');
+    const copyBtn = document.getElementById('copyBtn');
+
+    // Validation
+    if (!apiKey) {
+        alert('कृपया अपनी Gemini API Key दर्ज करें!');
+        return;
+    }
+    if (!prompt) {
+        alert('कृपया कहानी का कोई विषय या प्रॉम्ट लिखें!');
+        return;
+    }
+
+    // UI Updates (Show Loader)
+    outputArea.classList.add('hidden');
+    copyBtn.classList.add('opacity-0');
+    loader.classList.remove('hidden');
+
+    // Constructing the final prompt for the AI
+    const finalPrompt = `
+        ${systemInstruction}
+        विधा/शैली (Genre): ${genre}
+        लम्बाई (Length): ${length}
+        विषय (Topic): ${prompt}
+        
+        कृपया ऊपर दी गई सेटिंग्स के अनुसार एक बेहतरीन कहानी हिंदी में लिखें।
+    `;
+
+    try {
+        // Gemini API Endpoint (Using gemini-2.5-flash as it is fast and efficient)
+        const response = await fetch(`https://googleapis.com{apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: finalPrompt }]
+                }]
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Extract the generated text from API response
+            let storyText = data.candidates[0].content.parts[0].text;
+            
+            // Clean markdown bold tags if any, to look clean in UI
+            storyText = storyText.replace(/\*\*/g, '');
+
+            outputArea.innerText = storyText;
+            copyBtn.classList.remove('opacity-0');
+        } else {
+            outputArea.innerText = `त्रुटि (Error): ${data.error.message || 'कहानी जनरेट करने में समस्या आई।'}`;
+        }
+
+    } catch (error) {
+        outputArea.innerText = `नेटवर्क त्रुटि: कृपया अपना इंटरनेट कनेक्शन या API Key जांचें।`;
+        console.error(error);
+    } finally {
+        // Hide Loader, Show Output
+        loader.classList.add('hidden');
+        outputArea.classList.remove('hidden');
+    }
+}
+
+// Function to copy story text to clipboard
+function copyStory() {
+    const storyText = document.getElementById('storyOutput').innerText;
+    navigator.clipboard.writeText(storyText).then(() => {
+        const copyBtn = document.getElementById('copyBtn');
+        copyBtn.innerText = '✅ कॉपी हो गया!';
+        setTimeout(() => {
+            copyBtn.innerText = '📋 कॉपी करें';
+        }, 2000);
+    });
+}
